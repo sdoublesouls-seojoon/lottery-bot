@@ -123,7 +123,10 @@ class Lotto645:
         
         # 디버깅: HTML 응답 확인
         print(f"game645.do response length: {len(html)}")
-        print(f"game645.do response preview: {html[:500]}")
+        print(f"game645.do status code: {res.status_code}")
+        print(f"game645.do response headers: {dict(res.headers)}")
+        print(f"Session cookies: {list(self.http_client.session.cookies)}")
+        print(f"game645.do response preview: {html[:1000]}")
         
         soup = BS(
             html, "html5lib"
