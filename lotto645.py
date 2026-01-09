@@ -115,6 +115,12 @@ class Lotto645:
         direct = json.loads(res.text)["ready_ip"]
         
 
+        # 새 진입점: TotalGame.jsp를 먼저 호출하여 세션 설정
+        self.http_client.get(
+            url="https://el.dhlottery.co.kr/game/TotalGame.jsp?LottoId=LO40",
+            headers=org_headers
+        )
+        
         res = self.http_client.get(
             url="https://ol.dhlottery.co.kr/olotto/game/game645.do", 
             headers=org_headers
