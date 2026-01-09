@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 
 import auth
 import lotto645
-import win720
+# import win720  # 연금복권 사용 안 함
 import notification
 import time
 
@@ -21,16 +21,17 @@ def check_winning_lotto645(authCtrl: auth.AuthController) -> dict:
     item = lotto.check_winning(authCtrl)
     return item
 
-def buy_win720(authCtrl: auth.AuthController, username: str):
-    pension = win720.Win720()
-    response = pension.buy_Win720(authCtrl, username)
-    response['balance'] = pension.get_balance(auth_ctrl=authCtrl)
-    return response
+# 연금복권 관련 함수 - 사용 안 함
+# def buy_win720(authCtrl: auth.AuthController, username: str):
+#     pension = win720.Win720()
+#     response = pension.buy_Win720(authCtrl, username)
+#     response['balance'] = pension.get_balance(auth_ctrl=authCtrl)
+#     return response
 
-def check_winning_win720(authCtrl: auth.AuthController) -> dict:
-    pension = win720.Win720()
-    item = pension.check_winning(authCtrl)
-    return item
+# def check_winning_win720(authCtrl: auth.AuthController) -> dict:
+#     pension = win720.Win720()
+#     item = pension.check_winning(authCtrl)
+#     return item
 
 def send_message(mode: int, lottery_type: int, response: dict, webhook_url: str, platform: str = "slack"):
     notify = notification.Notification()
@@ -64,10 +65,10 @@ def check():
     response = check_winning_lotto645(globalAuthCtrl)
     send_message(0, 0, response=response, webhook_url=webhook_url, platform=platform)
 
-    time.sleep(10)
-    
-    response = check_winning_win720(globalAuthCtrl)
-    send_message(0, 1, response=response, webhook_url=webhook_url, platform=platform)
+    # 연금복권 당첨 확인 - 사용 안 함
+    # time.sleep(10)
+    # response = check_winning_win720(globalAuthCtrl)
+    # send_message(0, 1, response=response, webhook_url=webhook_url, platform=platform)
 
 def buy(): 
     
@@ -90,10 +91,10 @@ def buy():
     response = buy_lotto645(globalAuthCtrl, count, mode) 
     send_message(1, 0, response=response, webhook_url=webhook_url, platform=platform)
 
-    time.sleep(10)
-
-    response = buy_win720(globalAuthCtrl, username) 
-    send_message(1, 1, response=response, webhook_url=webhook_url, platform=platform)
+    # 연금복권 구매 - 사용 안 함
+    # time.sleep(10)
+    # response = buy_win720(globalAuthCtrl, username) 
+    # send_message(1, 1, response=response, webhook_url=webhook_url, platform=platform)
 
 def run():
     if len(sys.argv) < 2:

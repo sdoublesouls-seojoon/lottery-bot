@@ -1,20 +1,24 @@
 import copy
+import json
 import requests
+from Crypto.PublicKey import RSA
+from Crypto.Cipher import PKCS1_v1_5
 from HttpClient import HttpClientSingleton
+
 
 class AuthController:
     _REQ_HEADERS = {
-        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.77 Safari/537.36",
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
         "Connection": "keep-alive",
         "Cache-Control": "max-age=0",
-        "sec-ch-ua": '" Not;A Brand";v="99", "Google Chrome";v="91", "Chromium";v="91"',
+        "sec-ch-ua": '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
         "sec-ch-ua-mobile": "?0",
         "Upgrade-Insecure-Requests": "1",
-        "Origin": "https://dhlottery.co.kr",
+        "Origin": "https://www.dhlottery.co.kr",
         "Content-Type": "application/x-www-form-urlencoded",
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9",
-        "Referer": "https://dhlottery.co.kr/",
-        "Sec-Fetch-Site": "same-site",
+        "Referer": "https://www.dhlottery.co.kr/",
+        "Sec-Fetch-Site": "same-origin",
         "Sec-Fetch-Mode": "navigate",
         "Sec-Fetch-User": "?1",
         "Sec-Fetch-Dest": "document",
@@ -23,41 +27,102 @@ class AuthController:
 
     _AUTH_CRED = ""
 
-
     def __init__(self):
         self.http_client = HttpClientSingleton.get_instance()
 
-    def login(self, user_id: str, password: str):
+    def login(self, user_id: str, password: str) -> bool:
+        """
+        동행복권 로그인 (RSA 암호화 방식)
+        
+        Args:
+            user_id: 사용자 ID
+            password: 비밀번호
+            
+        Returns:
+            bool: 로그인 성공 여부
+        """
         assert type(user_id) == str
         assert type(password) == str
 
-        default_auth_cred = (
-            self._get_default_auth_cred()
-        )  # JSessionId 값을 받아온 후, 그 값에 인증을 씌우는 방식
-
+        # Step 1: 초기 세션 ID 획득
+        default_auth_cred = self._get_default_auth_cred()
+        
+        # Step 2: RSA 공개키 조회
+        rsa_key_data = self._get_rsa_public_key(default_auth_cred)
+        
+        # Step 3: 비밀번호 RSA 암호화
+        encrypted_password = self._encrypt_with_rsa(password, rsa_key_data)
+        
+        # Step 4: 로그인 요청
         headers = self._generate_req_headers(default_auth_cred)
+        data = self._generate_body(user_id, encrypted_password)
+        
+        login_result = self._try_login(headers, data)
+        
+        # Step 5: 로그인 성공 여부 확인 및 세션 저장
+        if login_result.get("result") == "success" or login_result.get("loginYn") == "Y":
+            self._update_auth_cred(default_auth_cred)
+            return True
+        else:
+            print(f"Login failed: {login_result.get('message', 'Unknown error')}")
+            return False
 
-        data = self._generate_body(user_id, password)
-
-        _res = self._try_login(headers, data)  # 새로운 값의 JSESSIONID가 내려오는데, 이 값으론 로그인 안됨
-
-        self._update_auth_cred(default_auth_cred)
-
-    def add_auth_cred_to_headers(self, headers: dict) -> str:
+    def add_auth_cred_to_headers(self, headers: dict) -> dict:
         assert type(headers) == dict
 
         copied_headers = copy.deepcopy(headers)
         copied_headers["Cookie"] = f"JSESSIONID={self._AUTH_CRED}"
         return copied_headers
 
-    def _get_default_auth_cred(self):
+    def _get_default_auth_cred(self) -> str:
+        """초기 JSESSIONID 획득"""
         res = self.http_client.get(
-            "https://dhlottery.co.kr/gameResult.do?method=byWin&wiselog=H_C_1_1"
+            "https://www.dhlottery.co.kr/common.do?method=main"
         )
-
         return self._get_j_session_id_from_response(res)
 
-    def _get_j_session_id_from_response(self, res: requests.Response):
+    def _get_rsa_public_key(self, j_session_id: str) -> dict:
+        """
+        RSA 공개키 조회
+        
+        Returns:
+            dict: {'rsaModulus': '...', 'publicExponent': '...'}
+        """
+        headers = self._generate_req_headers(j_session_id)
+        headers["Accept"] = "application/json, text/javascript, */*; q=0.01"
+        headers["X-Requested-With"] = "XMLHttpRequest"
+        
+        res = self.http_client.get(
+            "https://www.dhlottery.co.kr/login/selectRsaModulus.do",
+            headers=headers
+        )
+        
+        response_data = json.loads(res.text)
+        return response_data.get("data", {})
+
+    def _encrypt_with_rsa(self, plaintext: str, rsa_key_data: dict) -> str:
+        """
+        RSA 공개키로 텍스트 암호화
+        
+        Args:
+            plaintext: 암호화할 평문
+            rsa_key_data: {'rsaModulus': '...', 'publicExponent': '...'}
+            
+        Returns:
+            str: 16진수로 인코딩된 암호문
+        """
+        modulus = int(rsa_key_data["rsaModulus"], 16)
+        exponent = int(rsa_key_data["publicExponent"], 16)
+        
+        # RSA 공개키 생성
+        rsa_key = RSA.construct((modulus, exponent))
+        cipher = PKCS1_v1_5.new(rsa_key)
+        
+        # 암호화 및 16진수 변환
+        encrypted_bytes = cipher.encrypt(plaintext.encode('utf-8'))
+        return encrypted_bytes.hex()
+
+    def _get_j_session_id_from_response(self, res: requests.Response) -> str:
         assert type(res) == requests.Response
 
         for cookie in res.cookies:
@@ -66,40 +131,69 @@ class AuthController:
 
         raise KeyError("JSESSIONID cookie is not set in response")
 
-    def _generate_req_headers(self, j_session_id: str):
+    def _generate_req_headers(self, j_session_id: str) -> dict:
         assert type(j_session_id) == str
 
         copied_headers = copy.deepcopy(self._REQ_HEADERS)
         copied_headers["Cookie"] = f"JSESSIONID={j_session_id}"
         return copied_headers
 
-    def _generate_body(self, user_id: str, password: str):
+    def _generate_body(self, user_id: str, encrypted_password: str) -> dict:
+        """
+        로그인 요청 본문 생성
+        
+        Args:
+            user_id: 사용자 ID (평문)
+            encrypted_password: RSA 암호화된 비밀번호
+        """
         assert type(user_id) == str
-        assert type(password) == str
+        assert type(encrypted_password) == str
 
         return {
-            "returnUrl": "https://dhlottery.co.kr/common.do?method=main",
             "userId": user_id,
-            "password": password,
-            "checkSave": "on",
-            "newsEventYn": "",
+            "password": encrypted_password,
         }
 
-    def _try_login(self, headers: dict, data: dict):
+    def _try_login(self, headers: dict, data: dict) -> dict:
+        """
+        새 로그인 API 호출
+        
+        Returns:
+            dict: 로그인 응답 JSON
+        """
         assert type(headers) == dict
         assert type(data) == dict
 
+        headers["Content-Type"] = "application/x-www-form-urlencoded; charset=UTF-8"
+        headers["Accept"] = "application/json, text/javascript, */*; q=0.01"
+        headers["X-Requested-With"] = "XMLHttpRequest"
+
         res = self.http_client.post(
-            "https://www.dhlottery.co.kr/userSsl.do?method=login",
+            "https://www.dhlottery.co.kr/login/securityLoginCheck.do",
             headers=headers,
             data=data,
         )
-        return res
+        
+        try:
+            return json.loads(res.text)
+        except json.JSONDecodeError:
+            # HTML 응답인 경우 (리다이렉트 등)
+            return {"result": "success" if res.status_code == 200 else "fail"}
 
     def _update_auth_cred(self, j_session_id: str) -> None:
         assert type(j_session_id) == str
-
-        # TODO: judge whether login is success or not
-        # 로그인 실패해도 jsession 값이 갱신되기 때문에, 마이페이지 방문 등으로 판단해야 할 듯
-        # + 비번 5번 틀렸을 경우엔 비번 정확해도 로그인 실패함
         self._AUTH_CRED = j_session_id
+    
+    def is_logged_in(self) -> bool:
+        """로그인 상태 확인"""
+        if not self._AUTH_CRED:
+            return False
+            
+        headers = self.add_auth_cred_to_headers(self._REQ_HEADERS)
+        res = self.http_client.get(
+            "https://www.dhlottery.co.kr/userSsl.do?method=myPage",
+            headers=headers
+        )
+        
+        # 마이페이지에 접근 가능하면 로그인 상태
+        return "로그인" not in res.text or "마이페이지" in res.text
