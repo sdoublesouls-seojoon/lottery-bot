@@ -75,11 +75,15 @@ class AuthController:
         return copied_headers
 
     def _get_default_auth_cred(self) -> str:
-        """사이트 접속으로 초기 JSESSIONID 획득"""
-        # 메인 페이지 접속하여 세션 초기화
-        self.http_client.get(
-            "https://www.dhlottery.co.kr/common.do?method=main"
+        """로그인 페이지 접속으로 초기 JSESSIONID 획득"""
+        # 로그인 페이지에 접속하여 세션 초기화
+        res = self.http_client.get(
+            "https://www.dhlottery.co.kr/user.do?method=login"
         )
+        
+        # 디버깅: 쿠키 정보 출력
+        print(f"Response cookies: {list(res.cookies)}")
+        print(f"Session cookies: {list(self.http_client.session.cookies)}")
         
         # 세션 쿠키에서 JSESSIONID 추출
         return self._get_j_session_id_from_session()
