@@ -120,11 +120,26 @@ class Lotto645:
             headers=org_headers
         )
         html = res.text
+        
+        # 디버깅: HTML 응답 확인
+        print(f"game645.do response length: {len(html)}")
+        print(f"game645.do response preview: {html[:500]}")
+        
         soup = BS(
             html, "html5lib"
         )
-        draw_date = soup.find("input", id="ROUND_DRAW_DATE").get('value')
-        tlmt_date = soup.find("input", id="WAMT_PAY_TLMT_END_DT").get('value')
+        
+        draw_date_input = soup.find("input", id="ROUND_DRAW_DATE")
+        tlmt_date_input = soup.find("input", id="WAMT_PAY_TLMT_END_DT")
+        
+        if not draw_date_input or not tlmt_date_input:
+            print(f"ERROR: Required inputs not found!")
+            print(f"ROUND_DRAW_DATE found: {draw_date_input}")
+            print(f"WAMT_PAY_TLMT_END_DT found: {tlmt_date_input}")
+            raise ValueError("Required form inputs not found in game645.do page")
+        
+        draw_date = draw_date_input.get('value')
+        tlmt_date = tlmt_date_input.get('value')
 
         return [direct, draw_date, tlmt_date]
 
