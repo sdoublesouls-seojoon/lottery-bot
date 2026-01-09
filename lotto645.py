@@ -115,7 +115,7 @@ class Lotto645:
         direct = json.loads(res.text)["ready_ip"]
         
 
-        res = self.http_client.post(
+        res = self.http_client.get(
             url="https://ol.dhlottery.co.kr/olotto/game/game645.do", 
             headers=org_headers
         )
