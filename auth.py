@@ -50,12 +50,13 @@ class AuthController:
         # Step 2: RSA 공개키 조회
         rsa_key_data = self._get_rsa_public_key(default_auth_cred)
         
-        # Step 3: 비밀번호 RSA 암호화
+        # Step 3: 사용자 ID와 비밀번호 RSA 암호화 (수정.md 참고: 둘 다 암호화 필요)
+        encrypted_user_id = self._encrypt_with_rsa(user_id, rsa_key_data)
         encrypted_password = self._encrypt_with_rsa(password, rsa_key_data)
         
         # Step 4: 로그인 요청
         headers = self._generate_req_headers(default_auth_cred)
-        data = self._generate_body(user_id, encrypted_password)
+        data = self._generate_body(encrypted_user_id, encrypted_password)
         
         login_result = self._try_login(headers, data)
         
