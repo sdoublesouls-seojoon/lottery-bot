@@ -116,11 +116,15 @@ class Lotto645:
         
 
         # 새 진입점: TotalGame.jsp를 먼저 호출하여 세션 설정
+        print(f"Calling TotalGame.jsp...")
+        print(f"Request headers for TotalGame: {org_headers}")
         self.http_client.get(
             url="https://el.dhlottery.co.kr/game/TotalGame.jsp?LottoId=LO40",
             headers=org_headers
         )
         
+        print(f"Calling game645.do...")
+        print(f"Request headers for game645: {org_headers}")
         res = self.http_client.get(
             url="https://ol.dhlottery.co.kr/olotto/game/game645.do", 
             headers=org_headers

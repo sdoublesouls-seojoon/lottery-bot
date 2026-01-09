@@ -1,8 +1,7 @@
 import copy
 import json
 import requests
-from Crypto.PublicKey import RSA
-from Crypto.Cipher import PKCS1_v1_5
+from jsbn import RSAKey
 from HttpClient import HttpClientSingleton
 
 
@@ -106,7 +105,7 @@ class AuthController:
 
     def _encrypt_with_rsa(self, plaintext: str, rsa_key_data: dict) -> str:
         """
-        RSA 공개키로 텍스트 암호화
+        RSA 공개키로 텍스트 암호화 (jsbn 호환)
         
         Args:
             plaintext: 암호화할 평문
@@ -115,16 +114,15 @@ class AuthController:
         Returns:
             str: 16진수로 인코딩된 암호문
         """
-        modulus = int(rsa_key_data["rsaModulus"], 16)
-        exponent = int(rsa_key_data["publicExponent"], 16)
+        modulus = rsa_key_data["rsaModulus"]
+        exponent = rsa_key_data["publicExponent"]
         
-        # RSA 공개키 생성
-        rsa_key = RSA.construct((modulus, exponent))
-        cipher = PKCS1_v1_5.new(rsa_key)
+        # pyjsbn-rsa로 RSA 공개키 설정 및 암호화
+        rsa = RSAKey()
+        rsa.setPublic(modulus, exponent)
+        encrypted_hex = rsa.encrypt(plaintext)
         
-        # 암호화 및 16진수 변환
-        encrypted_bytes = cipher.encrypt(plaintext.encode('utf-8'))
-        return encrypted_bytes.hex()
+        return encrypted_hex
 
     def _get_j_session_id_from_session(self) -> str:
         """세션 쿠키에서 DHJSESSIONID 추출"""
