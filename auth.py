@@ -71,21 +71,17 @@ class AuthController:
         assert type(headers) == dict
 
         copied_headers = copy.deepcopy(headers)
-        copied_headers["Cookie"] = f"JSESSIONID={self._AUTH_CRED}"
+        copied_headers["Cookie"] = f"DHJSESSIONID={self._AUTH_CRED}"
         return copied_headers
 
     def _get_default_auth_cred(self) -> str:
-        """로그인 페이지 접속으로 초기 JSESSIONID 획득"""
+        """로그인 페이지 접속으로 초기 세션 쿠키 획득"""
         # 로그인 페이지에 접속하여 세션 초기화
-        res = self.http_client.get(
+        self.http_client.get(
             "https://www.dhlottery.co.kr/user.do?method=login"
         )
         
-        # 디버깅: 쿠키 정보 출력
-        print(f"Response cookies: {list(res.cookies)}")
-        print(f"Session cookies: {list(self.http_client.session.cookies)}")
-        
-        # 세션 쿠키에서 JSESSIONID 추출
+        # 세션 쿠키에서 DHJSESSIONID 추출
         return self._get_j_session_id_from_session()
 
     def _get_rsa_public_key(self, j_session_id: str) -> dict:
@@ -130,21 +126,21 @@ class AuthController:
         return encrypted_bytes.hex()
 
     def _get_j_session_id_from_session(self) -> str:
-        """세션 쿠키에서 JSESSIONID 추출"""
+        """세션 쿠키에서 DHJSESSIONID 추출"""
         session_cookies = self.http_client.session.cookies
         
         for cookie in session_cookies:
-            if cookie.name == "JSESSIONID":
+            if cookie.name == "DHJSESSIONID":
                 return cookie.value
         
-        raise KeyError("JSESSIONID cookie is not set in session")
+        raise KeyError("DHJSESSIONID cookie is not set in session")
 
     def _get_j_session_id_from_response(self, res: requests.Response) -> str:
-        """응답에서 JSESSIONID 추출 (레거시 호환성)"""
+        """응답에서 DHJSESSIONID 추출 (레거시 호환성)"""
         assert type(res) == requests.Response
 
         for cookie in res.cookies:
-            if cookie.name == "JSESSIONID":
+            if cookie.name == "DHJSESSIONID":
                 return cookie.value
         
         # 응답에 없으면 세션에서 시도
@@ -154,7 +150,7 @@ class AuthController:
         assert type(j_session_id) == str
 
         copied_headers = copy.deepcopy(self._REQ_HEADERS)
-        copied_headers["Cookie"] = f"JSESSIONID={j_session_id}"
+        copied_headers["Cookie"] = f"DHJSESSIONID={j_session_id}"
         return copied_headers
 
     def _generate_body(self, user_id: str, encrypted_password: str) -> dict:
