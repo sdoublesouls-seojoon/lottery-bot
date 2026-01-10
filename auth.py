@@ -235,13 +235,15 @@ class AuthController:
             )
             print("✓ el.dhlottery.co.kr session initialized")
 
-            # ol.dhlottery.co.kr 세션 초기화 (메인 페이지)
+            # ol.dhlottery.co.kr 세션 초기화 (egovUserReadySocket.json으로 세션 활성화)
             print("Initializing session for ol.dhlottery.co.kr...")
             headers_ol = headers.copy()
-            headers_ol["Referer"] = "https://el.dhlottery.co.kr/game/TotalGame.jsp?LottoId=LO40"
+            headers_ol["Referer"] = "https://ol.dhlottery.co.kr/olotto/game/game645.do"
+            headers_ol["Content-Type"] = "application/json; charset=UTF-8"
+            headers_ol["X-Requested-With"] = "XMLHttpRequest"
 
-            self.http_client.get(
-                "https://ol.dhlottery.co.kr/olotto/game/game645.do",
+            self.http_client.post(
+                "https://ol.dhlottery.co.kr/olotto/game/egovUserReadySocket.json",
                 headers=headers_ol
             )
             print("✓ ol.dhlottery.co.kr session initialized")
