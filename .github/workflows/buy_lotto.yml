@@ -15,6 +15,12 @@ jobs:
         with:
           python-version: '3.9'
           cache: 'pip' # caching pip dependencies
+
+      - name: Setup Chrome
+        uses: browser-actions/setup-chrome@v1
+        with:
+          chrome-version: stable
+
       - run: pip install -r requirements.txt
       
       - name: Run Scripts
@@ -28,9 +34,17 @@ jobs:
         continue-on-error: true  # 에러가 발생해도 다음 단계 실행
 
       - name: Upload debug HTML
-        if: always()  # 성공/실패 여부와 관계없이 항상 실행
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: game645-html-debug
           path: game645_debug.html
+          retention-days: 7
+
+      - name: Upload screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: selenium-screenshots
+          path: screenshot_*.png
           retention-days: 7

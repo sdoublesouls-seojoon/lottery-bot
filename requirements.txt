@@ -36,3 +36,5 @@ toml==0.10.2
 uritemplate==4.1.1
 urllib3==1.26.6
 webencodings==0.5.1
+selenium>=4.15.0
+webdriver-manager>=4.0.0
