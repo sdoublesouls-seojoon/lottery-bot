@@ -178,11 +178,12 @@ def click_purchase_button(driver: webdriver.Chrome) -> bool:
         except:
             pass
         
-        # 구매 확인 팝업 버튼 클릭 (closepopupLayerConfirm)
+        # 구매 확인 팝업 버튼 클릭 (#popupLayerConfirm 안의 확인 버튼)
         try:
             print("   구매 확인 팝업 대기 중...")
+            # popupLayerConfirm 레이어 안의 확인 버튼 찾기
             confirm_btn = WebDriverWait(driver, 10).until(
-                EC.element_to_be_clickable((By.CSS_SELECTOR, "input.button.lrg.confirm[value='확인']"))
+                EC.element_to_be_clickable((By.CSS_SELECTOR, "#popupLayerConfirm input.button.lrg.confirm[value='확인']"))
             )
             confirm_btn.click()
             print("✓ 구매 확인 버튼 클릭!")
