@@ -29,7 +29,7 @@ jobs:
 
       - name: Upload debug HTML
         if: always()  # 성공/실패 여부와 관계없이 항상 실행
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: game645-html-debug
           path: game645_debug.html
