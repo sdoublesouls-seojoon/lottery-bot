@@ -84,31 +84,25 @@ def buy_manual(driver: webdriver.Chrome, games: list, game_limit: int = None) ->
             game_num = game["game"]
             numbers = game["numbers"]
             
-            print(f"   게임 {game_num}: {numbers} 입력 중...")
-            
-            # 각 번호 버튼 클릭 - label[for='check645num{num}'] 사용
+            # 각 번호 버튼 클릭
             for num in numbers:
                 try:
-                    # label을 클릭하면 해당 checkbox가 선택됨
                     num_label = WebDriverWait(driver, 5).until(
                         EC.presence_of_element_located((By.CSS_SELECTOR, f"label[for='check645num{num}']"))
                     )
-                    # 스크롤하여 보이게 만들기
                     driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", num_label)
                     time.sleep(0.1)
-                    # JavaScript로 클릭 (headless 모드에서 안정적)
                     driver.execute_script("arguments[0].click();", num_label)
                     time.sleep(0.1)
                 except Exception as e:
                     print(f"   ⚠️ 번호 {num} 클릭 실패: {e}")
             
-            # 번호 6개 선택 완료 후 확인 버튼 클릭
+            # 번호 선택 확인 버튼 클릭
             try:
-                # 알림 팝업(popupLayerAlert) 있으면 먼저 닫기
+                # 알림 팝업 있으면 먼저 닫기
                 try:
                     alert_close = driver.find_element(By.CSS_SELECTOR, "#popupLayerAlert input.button[value='확인']")
-                    alert_close.click()
-                    print(f"   ℹ️ 알림 팝업 닫음")
+                    driver.execute_script("arguments[0].click();", alert_close)
                     time.sleep(0.3)
                 except:
                     pass
@@ -116,15 +110,13 @@ def buy_manual(driver: webdriver.Chrome, games: list, game_limit: int = None) ->
                 select_btn = WebDriverWait(driver, 5).until(
                     EC.presence_of_element_located((By.ID, "btnSelectNum"))
                 )
-                # JavaScript로 클릭 (headless 모드 안정성)
                 driver.execute_script("arguments[0].click();", select_btn)
-                print(f"   ✓ 게임 {game_num} 번호 선택 완료")
+                print(f"   ✓ 게임 {game_num}: {numbers}")
                 time.sleep(0.5)
             except Exception as e:
-                print(f"   ⚠️ 선택 확인 버튼 클릭 실패: {e}")
+                print(f"   ⚠️ 게임 {game_num} 확인 실패: {e}")
         
-        save_screenshot(driver, "07_manual_numbers_selected")
-        print(f"✓ 수동 번호 {len(games)}게임 입력 완료")
+        print(f"✓ {len(games)}게임 번호 입력 완료")
         return True
         
     except Exception as e:
@@ -146,65 +138,43 @@ def click_purchase_button(driver: webdriver.Chrome) -> bool:
     print("💰 구매하기 버튼 클릭 중...")
     
     try:
-        # 버튼 찾기 전 현재 상태 스크린샷
-        save_screenshot(driver, "07b_before_buy_btn")
-        
         # 구매하기 버튼 찾기
         try:
             buy_btn = WebDriverWait(driver, 10).until(
                 EC.element_to_be_clickable((By.ID, "btnBuy"))
             )
         except:
-            # 버튼이 안 보이면 JavaScript로 찾기
-            print("   버튼 직접 탐색 시도...")
             buy_btn = driver.find_element(By.ID, "btnBuy")
         
-        # 버튼 상태 확인
-        is_disabled = buy_btn.get_attribute("disabled")
-        btn_class = buy_btn.get_attribute("class")
-        print(f"   버튼 상태: disabled={is_disabled}, class={btn_class}")
-        
-        if is_disabled:
+        # 버튼 비활성화 확인
+        if buy_btn.get_attribute("disabled"):
             print("⚠️ 구매하기 버튼이 비활성화 상태입니다")
             save_screenshot(driver, "error_btn_disabled")
             return False
         
-        # 클릭 시도 (일반 클릭)
-        try:
-            buy_btn.click()
-            print("✓ 구매하기 버튼 클릭!")
-        except:
-            # JavaScript로 클릭 시도
-            print("   JavaScript로 클릭 시도...")
-            driver.execute_script("arguments[0].click();", buy_btn)
-            print("✓ 구매하기 버튼 클릭 (JS)!")
-        
+        # JavaScript로 클릭 (안정성)
+        driver.execute_script("arguments[0].click();", buy_btn)
+        print("✓ 구매하기 버튼 클릭!")
         time.sleep(2)
-        save_screenshot(driver, "08_buy_btn_clicked")
         
-        # 확인 팝업 처리 (있을 경우)
+        # 확인 팝업 처리 (alert)
         try:
             alert = driver.switch_to.alert
-            alert_text = alert.text
-            print(f"ℹ️ 확인 팝업: {alert_text}")
             alert.accept()
             time.sleep(1)
         except:
             pass
         
-        # 구매 확인 팝업 버튼 클릭 (#popupLayerConfirm 안의 확인 버튼)
+        # 구매 확인 팝업 버튼 클릭
         try:
-            print("   구매 확인 팝업 대기 중...")
-            # popupLayerConfirm 레이어 안의 확인 버튼 찾기
             confirm_btn = WebDriverWait(driver, 10).until(
                 EC.element_to_be_clickable((By.CSS_SELECTOR, "#popupLayerConfirm input.button.lrg.confirm[value='확인']"))
             )
             confirm_btn.click()
-            print("✓ 구매 확인 버튼 클릭!")
+            print("✓ 구매 확인!")
             time.sleep(2)
-            save_screenshot(driver, "08b_confirm_clicked")
-        except Exception as e:
-            print(f"   ⚠️ 확인 버튼 없거나 클릭 실패: {e}")
+        except:
+            pass
         
         save_screenshot(driver, "09_purchase_completed")
         print("✅ 구매 완료!")
@@ -287,28 +257,19 @@ def login(driver: webdriver.Chrome, user_id: str, password: str) -> bool:
         user_id_input = WebDriverWait(driver, 10).until(
             EC.element_to_be_clickable((By.ID, "inpUserId"))
         )
-        
-        # JavaScript로 값 입력 (더 안정적)
         driver.execute_script("arguments[0].value = arguments[1]", user_id_input, user_id)
-        print(f"✓ ID 입력 완료")
         
         # 비밀번호 입력
-        print("비밀번호 입력 필드 대기 중...")
         password_input = WebDriverWait(driver, 10).until(
             EC.element_to_be_clickable((By.ID, "inpUserPswdEncn"))
         )
         driver.execute_script("arguments[0].value = arguments[1]", password_input, password)
-        print(f"✓ 비밀번호 입력 완료")
-        
-        # 스크린샷 저장
-        save_screenshot(driver, "03_credentials_entered")
         
         # 로그인 버튼 클릭
         login_btn = WebDriverWait(driver, 10).until(
             EC.element_to_be_clickable((By.ID, "btnLogin"))
         )
         login_btn.click()
-        print("🔄 로그인 버튼 클릭...")
         
         # 로그인 완료 대기
         time.sleep(3)
@@ -356,17 +317,12 @@ def navigate_to_lotto645(driver: webdriver.Chrome) -> bool:
         # 페이지 로딩 대기
         time.sleep(3)
         
-        save_screenshot(driver, "05_lotto645_page")
-        
-        # 판매 시간 외 팝업 확인 (alert)
+        # 알림 팝업 처리
         try:
             alert = driver.switch_to.alert
-            alert_text = alert.text
-            print(f"ℹ️ 알림: {alert_text}")
-            alert.accept()  # 확인 클릭
-            save_screenshot(driver, "05_after_alert")
+            alert.accept()
         except:
-            pass  # 알림이 없으면 통과
+            pass
         
         page_source = driver.page_source
         
