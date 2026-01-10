@@ -25,3 +25,12 @@ jobs:
           COUNT: ${{ secrets.COUNT }}
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
           DISCORD_WEBHOOK_URL:  ${{ secrets.DISCORD_WEBHOOK_URL }}
+        continue-on-error: true  # 에러가 발생해도 다음 단계 실행
+
+      - name: Upload debug HTML
+        if: always()  # 성공/실패 여부와 관계없이 항상 실행
+        uses: actions/upload-artifact@v3
+        with:
+          name: game645-html-debug
+          path: game645_debug.html
+          retention-days: 7

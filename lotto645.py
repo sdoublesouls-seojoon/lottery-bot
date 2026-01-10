@@ -126,11 +126,22 @@ class Lotto645:
         print(f"Calling game645.do...")
         print(f"Request headers for game645: {org_headers}")
         res = self.http_client.get(
-            url="https://ol.dhlottery.co.kr/olotto/game/game645.do", 
+            url="https://ol.dhlottery.co.kr/olotto/game/game645.do",
             headers=org_headers
         )
         html = res.text
-        
+
+        # 디버깅: HTML 파일 저장 (GitHub Actions Artifacts용)
+        import os
+        debug_dir = os.getenv('GITHUB_WORKSPACE', '.')
+        debug_file = os.path.join(debug_dir, 'game645_debug.html')
+        try:
+            with open(debug_file, 'w', encoding='utf-8') as f:
+                f.write(html)
+            print(f"✓ HTML saved to {debug_file} (size: {len(html)} bytes)")
+        except Exception as e:
+            print(f"Warning: Could not save HTML: {e}")
+
         # 디버깅: HTML 응답 확인
         print(f"game645.do response length: {len(html)}")
         print(f"game645.do status code: {res.status_code}")
