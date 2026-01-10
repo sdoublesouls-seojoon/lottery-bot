@@ -58,7 +58,10 @@ class AuthController:
         data = self._generate_body(encrypted_user_id, encrypted_password)
         
         login_result = self._try_login(headers, data)
-        
+
+        # 디버깅: 로그인 응답 출력
+        print(f"Login response: {login_result}")
+
         # Step 5: 로그인 성공 여부 확인 및 세션 저장
         if login_result.get("result") == "success" or login_result.get("loginYn") == "Y":
             self._update_auth_cred(default_auth_cred)
