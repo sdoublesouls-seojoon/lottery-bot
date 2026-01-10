@@ -55,17 +55,23 @@ def fetch_numbers_from_sheet(api_url: str) -> list:
         return []
 
 
-def buy_manual(driver: webdriver.Chrome, games: list) -> bool:
+def buy_manual(driver: webdriver.Chrome, games: list, game_limit: int = None) -> bool:
     """
     수동 번호로 로또 구매
     
     Args:
         driver: WebDriver 인스턴스
         games: 게임 번호 리스트 [{"game": 1, "numbers": [1,7,15,23,35,42]}, ...]
+        game_limit: 게임 수 제한 (None이면 전체)
     
     Returns:
         성공 여부
     """
+    # 게임 수 제한 적용
+    if game_limit and game_limit < len(games):
+        games = games[:game_limit]
+        print(f"ℹ️ 게임 수 제한: {game_limit}게임만 입력")
+    
     print(f"🎯 수동 번호 {len(games)}게임 입력 중...")
     
     try:
@@ -105,6 +111,60 @@ def buy_manual(driver: webdriver.Chrome, games: list) -> bool:
     except Exception as e:
         print(f"❌ 수동 번호 입력 실패: {e}")
         save_screenshot(driver, "error_manual_input")
+        return False
+
+
+def click_purchase_button(driver: webdriver.Chrome) -> bool:
+    """
+    구매하기 버튼 클릭
+    
+    Args:
+        driver: WebDriver 인스턴스
+    
+    Returns:
+        성공 여부
+    """
+    print("💰 구매하기 버튼 클릭 중...")
+    
+    try:
+        # 구매하기 버튼 클릭
+        buy_btn = WebDriverWait(driver, 10).until(
+            EC.element_to_be_clickable((By.ID, "btnBuy"))
+        )
+        buy_btn.click()
+        print("✓ 구매하기 버튼 클릭!")
+        
+        time.sleep(2)
+        save_screenshot(driver, "08_buy_btn_clicked")
+        
+        # 확인 팝업 처리 (있을 경우)
+        try:
+            alert = driver.switch_to.alert
+            alert_text = alert.text
+            print(f"ℹ️ 확인 팝업: {alert_text}")
+            alert.accept()
+            time.sleep(1)
+        except:
+            pass
+        
+        # 최종 확인 버튼이 있을 경우 클릭
+        try:
+            confirm_btn = WebDriverWait(driver, 5).until(
+                EC.element_to_be_clickable((By.CSS_SELECTOR, "input[type='button'][value='확인'], button.btn_confirm"))
+            )
+            confirm_btn.click()
+            print("✓ 최종 확인 버튼 클릭!")
+            time.sleep(1)
+        except:
+            pass
+        
+        save_screenshot(driver, "09_purchase_completed")
+        print("✅ 구매 완료!")
+        return True
+        
+    except Exception as e:
+        print(f"❌ 구매하기 버튼 클릭 실패: {e}")
+        save_screenshot(driver, "error_purchase")
         return False
 
 
@@ -425,8 +485,8 @@ def run_selenium_buy(user_id: str, password: str, count: int = 1, sheet_api_url:
         
         # 4. 번호 선택 (수동 또는 자동)
         if mode == "manual" and games:
-            print(f"🎯 수동 모드: {len(games)}게임 번호 입력")
-            if not buy_manual(driver, games):
+            print(f"🎯 수동 모드: {len(games)}게임 중 {count}게임 입력")
+            if not buy_manual(driver, games, game_limit=count):
                 result["message"] = "수동 번호 입력 실패"
                 return result
         else:
@@ -434,18 +494,21 @@ def run_selenium_buy(user_id: str, password: str, count: int = 1, sheet_api_url:
             # TODO: buy_auto(driver, count)
             pass
         
-        # TODO: 실제 구매 버튼 클릭 로직
-        # click_purchase_button(driver)
+        # 5. 구매하기 버튼 클릭
+        if not click_purchase_button(driver):
+            result["message"] = "구매하기 버튼 클릭 실패"
+            return result
         
         print("=" * 50)
-        print("✅ 구매 페이지 접근 성공!")
+        print("✅ 로또 구매 완료!")
         if mode == "manual":
-            print(f"   수동 번호 {len(games)}게임 준비 완료")
+            purchased_count = min(count, len(games))
+            print(f"   수동 번호 {purchased_count}게임 구매 완료")
         print("=" * 50)
         
         result["success"] = True
-        result["message"] = f"{mode.upper()} 모드 구매 준비 완료"
-        result["games"] = games if mode == "manual" else []
+        result["message"] = f"{mode.upper()} 모드 구매 완료"
+        result["games"] = games[:count] if mode == "manual" else []
         
     except Exception as e:
         print(f"❌ 예외 발생: {e}")
