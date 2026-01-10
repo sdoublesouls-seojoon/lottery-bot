@@ -122,11 +122,6 @@ class Lotto645:
         )
         html = res.text
 
-        # 세션 만료 확인
-        if "시간 초과" in html or "세션이 해제" in html or "로그인해 주시기 바랍니다" in html:
-            print(f"ERROR: Session expired! Please check login credentials.")
-            raise ValueError("Session expired. Login session was not properly maintained.")
-
         # 디버깅: HTML 파일 저장 (GitHub Actions Artifacts용)
         import os
         debug_dir = os.getenv('GITHUB_WORKSPACE', '.')
@@ -137,6 +132,12 @@ class Lotto645:
             print(f"✓ HTML saved to {debug_file} (size: {len(html)} bytes)")
         except Exception as e:
             print(f"Warning: Could not save HTML: {e}")
+
+        # 세션 만료 확인
+        if "시간 초과" in html or "세션이 해제" in html or "로그인해 주시기 바랍니다" in html:
+            print(f"ERROR: Session expired! Please check login credentials.")
+            print(f"This usually means the login session cookies are not being shared across subdomains.")
+            raise ValueError("Session expired. Login session was not properly maintained.")
 
         # 디버깅: 기본 정보
         print(f"✓ game645.do response: {res.status_code}, {len(html)} bytes")
