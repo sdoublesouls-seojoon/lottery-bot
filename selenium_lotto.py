@@ -104,10 +104,20 @@ def buy_manual(driver: webdriver.Chrome, games: list, game_limit: int = None) ->
             
             # 번호 6개 선택 완료 후 확인 버튼 클릭
             try:
+                # 알림 팝업(popupLayerAlert) 있으면 먼저 닫기
+                try:
+                    alert_close = driver.find_element(By.CSS_SELECTOR, "#popupLayerAlert input.button[value='확인']")
+                    alert_close.click()
+                    print(f"   ℹ️ 알림 팝업 닫음")
+                    time.sleep(0.3)
+                except:
+                    pass
+                
                 select_btn = WebDriverWait(driver, 5).until(
-                    EC.element_to_be_clickable((By.ID, "btnSelectNum"))
+                    EC.presence_of_element_located((By.ID, "btnSelectNum"))
                 )
-                select_btn.click()
+                # JavaScript로 클릭 (headless 모드 안정성)
+                driver.execute_script("arguments[0].click();", select_btn)
                 print(f"   ✓ 게임 {game_num} 번호 선택 완료")
                 time.sleep(0.5)
             except Exception as e:
