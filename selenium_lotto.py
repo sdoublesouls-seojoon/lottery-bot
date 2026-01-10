@@ -91,10 +91,14 @@ def buy_manual(driver: webdriver.Chrome, games: list, game_limit: int = None) ->
                 try:
                     # label을 클릭하면 해당 checkbox가 선택됨
                     num_label = WebDriverWait(driver, 5).until(
-                        EC.element_to_be_clickable((By.CSS_SELECTOR, f"label[for='check645num{num}']"))
+                        EC.presence_of_element_located((By.CSS_SELECTOR, f"label[for='check645num{num}']"))
                     )
-                    num_label.click()
-                    time.sleep(0.2)
+                    # 스크롤하여 보이게 만들기
+                    driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", num_label)
+                    time.sleep(0.1)
+                    # JavaScript로 클릭 (headless 모드에서 안정적)
+                    driver.execute_script("arguments[0].click();", num_label)
+                    time.sleep(0.1)
                 except Exception as e:
                     print(f"   ⚠️ 번호 {num} 클릭 실패: {e}")
             
