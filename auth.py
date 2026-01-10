@@ -202,6 +202,35 @@ class AuthController:
     def _update_auth_cred(self, j_session_id: str) -> None:
         assert type(j_session_id) == str
         self._AUTH_CRED = j_session_id
+
+        # 세션 쿠키를 모든 서브도메인에서 사용할 수 있도록 설정
+        from http.cookiejar import Cookie
+        import time
+
+        # .dhlottery.co.kr 도메인으로 쿠키 생성 (모든 서브도메인에서 사용 가능)
+        cookie = Cookie(
+            version=0,
+            name='DHJSESSIONID',
+            value=j_session_id,
+            port=None,
+            port_specified=False,
+            domain='.dhlottery.co.kr',
+            domain_specified=True,
+            domain_initial_dot=True,
+            path='/',
+            path_specified=True,
+            secure=False,
+            expires=None,
+            discard=True,
+            comment=None,
+            comment_url=None,
+            rest={},
+            rfc2109=False
+        )
+
+        # 세션 쿠키 jar에 추가
+        self.http_client.session.cookies.set_cookie(cookie)
+        print(f"✓ Session cookie set for .dhlottery.co.kr domain")
     
     def is_logged_in(self) -> bool:
         """로그인 상태 확인"""
