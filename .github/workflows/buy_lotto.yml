@@ -3,6 +3,8 @@ on:
   schedule:
     - cron: 0 10 * * 1 # every Monday on 07:00 PM (KST)
   workflow_dispatch:
+  repository_dispatch:
+    types: [buy-lotto]
 
 jobs:
   build:
@@ -31,6 +33,8 @@ jobs:
           COUNT: ${{ secrets.COUNT }}
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
           DISCORD_WEBHOOK_URL:  ${{ secrets.DISCORD_WEBHOOK_URL }}
+          PURCHASE_MODE: ${{ github.event_name == 'repository_dispatch' && 'manual' || 'auto' }}
+          SHEET_API_URL: ${{ secrets.SHEET_API_URL }}
         continue-on-error: true  # 에러가 발생해도 다음 단계 실행
 
       - name: Upload debug HTML
