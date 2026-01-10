@@ -75,21 +75,23 @@ def buy_manual(driver: webdriver.Chrome, games: list) -> bool:
             
             print(f"   게임 {game_num}: {numbers} 입력 중...")
             
-            # 각 번호 버튼 클릭
+            # 각 번호 버튼 클릭 - label[for='check645num{num}'] 사용
             for num in numbers:
                 try:
-                    # 번호 버튼 클릭 (동행복권 번호판 ID 형식)
-                    num_btn = WebDriverWait(driver, 5).until(
-                        EC.element_to_be_clickable((By.CSS_SELECTOR, f"span.ball645_check[value='{num}'], #check645num{num}"))
+                    # label을 클릭하면 해당 checkbox가 선택됨
+                    num_label = WebDriverWait(driver, 5).until(
+                        EC.element_to_be_clickable((By.CSS_SELECTOR, f"label[for='check645num{num}']"))
                     )
-                    num_btn.click()
+                    num_label.click()
                     time.sleep(0.2)
                 except Exception as e:
                     print(f"   ⚠️ 번호 {num} 클릭 실패: {e}")
             
-            # 번호 선택 완료 후 확인 버튼 클릭
+            # 번호 6개 선택 완료 후 확인 버튼 클릭
             try:
-                select_btn = driver.find_element(By.ID, "btnSelectNum")
+                select_btn = WebDriverWait(driver, 5).until(
+                    EC.element_to_be_clickable((By.ID, "btnSelectNum"))
+                )
                 select_btn.click()
                 print(f"   ✓ 게임 {game_num} 번호 선택 완료")
                 time.sleep(0.5)
@@ -240,7 +242,7 @@ def navigate_to_lotto645(driver: webdriver.Chrome) -> bool:
     print("🎰 로또645 페이지로 이동 중...")
     
     try:
-        # 로또645 구매 페이지 직접 접속
+        # 로또645 구매 페이지로 이동
         driver.get("https://ol.dhlottery.co.kr/olotto/game/game645.do")
         
         # 페이지 로딩 대기
@@ -248,13 +250,7 @@ def navigate_to_lotto645(driver: webdriver.Chrome) -> bool:
         
         save_screenshot(driver, "05_lotto645_page")
         
-        # 세션 만료 확인
-        page_source = driver.page_source
-        if "시간 초과" in page_source or "세션이 해제" in page_source:
-            print("❌ 세션 만료됨!")
-            return False
-        
-        # 판매 시간 외 팝업 확인 (alert 또는 div로 표시될 수 있음)
+        # 판매 시간 외 팝업 확인 (alert)
         try:
             alert = driver.switch_to.alert
             alert_text = alert.text
@@ -264,13 +260,26 @@ def navigate_to_lotto645(driver: webdriver.Chrome) -> bool:
         except:
             pass  # 알림이 없으면 통과
         
-        # 팝업 div 확인 (판매 시간 외 메시지)
+        page_source = driver.page_source
+        
+        # 구매 영역이 있으면 성공 (번호 선택 영역이나 구매 버튼)
+        if "번호선택" in page_source or "자동번호발급" in page_source or "ball645" in page_source:
+            print("✓ 로또645 페이지 접속 성공!")
+            return True
+        
+        # 판매 시간이 아닌 경우 (회차정보 없음 메시지)
         if "존재하지 않습니다" in page_source or "회차정보가 존재하지" in page_source:
             print("ℹ️ 현재 판매 시간이 아닙니다 (회차정보 없음)")
             save_screenshot(driver, "05_no_round_info")
             return True  # 정상 - 판매 시간이 아닐 뿐
         
-        print("✓ 로또645 페이지 접속 성공!")
+        # 명확한 세션 만료 메시지만 체크
+        if "세션이 해제" in page_source and "시간 초과" in page_source:
+            print("❌ 세션 만료됨!")
+            return False
+        
+        # 그 외의 경우도 일단 성공으로 처리
+        print("✓ 로또645 페이지 접속 완료")
         return True
         
     except Exception as e:
