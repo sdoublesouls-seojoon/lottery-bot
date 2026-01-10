@@ -13,6 +13,20 @@ class Notification:
         message = f"{result['buyRound']}회 로또 구매 완료 :moneybag: 남은잔액 : {body['balance']}\n```{lotto_number_str}```"
         self._send_webhook(webhook_url, message, platform)
 
+    def send_selenium_buy_message(self, result: dict, webhook_url: str, platform: str = "slack") -> None:
+        """Selenium 구매 결과 알림 전송"""
+        if result.get("success"):
+            message = f"🚀 로또 구매 성공! ({result.get('message')})\n"
+            if result.get("games"):
+                message += "🎫 구매 번호:\n```"
+                for game in result["games"]:
+                    message += f"게임 {game['game']}: {game['numbers']}\n"
+                message += "```"
+        else:
+            message = f"❌ 로또 구매 실패\n이유: {result.get('message')}"
+        
+        self._send_webhook(webhook_url, message, platform)
+
     def make_lotto_number_message(self, lotto_number: list) -> str:
         assert type(lotto_number) == list
 

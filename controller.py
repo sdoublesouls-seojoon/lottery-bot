@@ -99,14 +99,18 @@ def buy():
         mode=purchase_mode
     )
     
+    
+    # 결과 출력
     if result["success"]:
         print(f"✓ Selenium 실행 성공: {result['message']}")
         if result.get("games"):
             print(f"   선택된 게임: {len(result['games'])}개")
-        # TODO: 실제 구매 완료 시 알림 전송
-        # send_message(1, 0, response=response, webhook_url=webhook_url, platform=platform)
     else:
         print(f"❌ Selenium 실행 실패: {result['message']}")
+        
+    # 알림 전송
+    notify = notification.Notification()
+    notify.send_selenium_buy_message(result, webhook_url, platform)
 
 def run():
     if len(sys.argv) < 2:
