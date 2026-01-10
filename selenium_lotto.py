@@ -132,12 +132,38 @@ def click_purchase_button(driver: webdriver.Chrome) -> bool:
     print("💰 구매하기 버튼 클릭 중...")
     
     try:
-        # 구매하기 버튼 클릭
-        buy_btn = WebDriverWait(driver, 10).until(
-            EC.element_to_be_clickable((By.ID, "btnBuy"))
-        )
-        buy_btn.click()
-        print("✓ 구매하기 버튼 클릭!")
+        # 버튼 찾기 전 현재 상태 스크린샷
+        save_screenshot(driver, "07b_before_buy_btn")
+        
+        # 구매하기 버튼 찾기
+        try:
+            buy_btn = WebDriverWait(driver, 10).until(
+                EC.element_to_be_clickable((By.ID, "btnBuy"))
+            )
+        except:
+            # 버튼이 안 보이면 JavaScript로 찾기
+            print("   버튼 직접 탐색 시도...")
+            buy_btn = driver.find_element(By.ID, "btnBuy")
+        
+        # 버튼 상태 확인
+        is_disabled = buy_btn.get_attribute("disabled")
+        btn_class = buy_btn.get_attribute("class")
+        print(f"   버튼 상태: disabled={is_disabled}, class={btn_class}")
+        
+        if is_disabled:
+            print("⚠️ 구매하기 버튼이 비활성화 상태입니다")
+            save_screenshot(driver, "error_btn_disabled")
+            return False
+        
+        # 클릭 시도 (일반 클릭)
+        try:
+            buy_btn.click()
+            print("✓ 구매하기 버튼 클릭!")
+        except:
+            # JavaScript로 클릭 시도
+            print("   JavaScript로 클릭 시도...")
+            driver.execute_script("arguments[0].click();", buy_btn)
+            print("✓ 구매하기 버튼 클릭 (JS)!")
         
         time.sleep(2)
         save_screenshot(driver, "08_buy_btn_clicked")
