@@ -76,10 +76,13 @@ def buy():
 
     username = os.environ.get('USERNAME')
     password = os.environ.get('PASSWORD')
-    count = int(os.environ.get('COUNT'))
+    count = int(os.environ.get('COUNT', '1'))
     slack_webhook_url = os.environ.get('SLACK_WEBHOOK_URL') 
     discord_webhook_url = os.environ.get('DISCORD_WEBHOOK_URL')
-    mode = "AUTO"
+    
+    # 구매 모드: auto 또는 manual
+    purchase_mode = os.environ.get('PURCHASE_MODE', 'auto').lower()
+    sheet_api_url = os.environ.get('SHEET_API_URL', '')
     
     # Slack 우선, 없으면 Discord 사용
     webhook_url = slack_webhook_url or discord_webhook_url
@@ -87,26 +90,23 @@ def buy():
 
     # Selenium 브라우저 자동화 모드 사용
     from selenium_lotto import run_selenium_buy
-    result = run_selenium_buy(username, password, count)
+    
+    result = run_selenium_buy(
+        user_id=username,
+        password=password,
+        count=count,
+        sheet_api_url=sheet_api_url if purchase_mode == "manual" else None,
+        mode=purchase_mode
+    )
     
     if result["success"]:
         print(f"✓ Selenium 실행 성공: {result['message']}")
+        if result.get("games"):
+            print(f"   선택된 게임: {len(result['games'])}개")
         # TODO: 실제 구매 완료 시 알림 전송
-        # response = {...}
         # send_message(1, 0, response=response, webhook_url=webhook_url, platform=platform)
     else:
         print(f"❌ Selenium 실행 실패: {result['message']}")
-
-    # 기존 requests 방식 (주석 처리)
-    # globalAuthCtrl = auth.AuthController()
-    # globalAuthCtrl.login(username, password)
-    # response = buy_lotto645(globalAuthCtrl, count, mode) 
-    # send_message(1, 0, response=response, webhook_url=webhook_url, platform=platform)
-
-    # 연금복권 구매 - 사용 안 함
-    # time.sleep(10)
-    # response = buy_win720(globalAuthCtrl, username) 
-    # send_message(1, 1, response=response, webhook_url=webhook_url, platform=platform)
 
 def run():
     if len(sys.argv) < 2:

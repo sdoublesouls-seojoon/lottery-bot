@@ -7,6 +7,7 @@ Selenium 브라우저 자동화로 전환
 
 import os
 import time
+import requests
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
@@ -15,6 +16,94 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException, NoSuchElementException
 from webdriver_manager.chrome import ChromeDriverManager
+
+
+def fetch_numbers_from_sheet(api_url: str) -> list:
+    """
+    구글 스프레드시트에서 로또 번호 가져오기
+    
+    Args:
+        api_url: Apps Script Web App URL
+    
+    Returns:
+        게임 번호 리스트 [{"game": 1, "numbers": [1,7,15,23,35,42]}, ...]
+    """
+    print(f"📊 스프레드시트에서 번호 조회 중...")
+    
+    try:
+        response = requests.get(api_url, timeout=10)
+        response.raise_for_status()
+        data = response.json()
+        
+        if not data.get("success"):
+            print(f"❌ API 오류: {data.get('error', 'Unknown error')}")
+            return []
+        
+        games = data.get("games", [])
+        print(f"✓ {len(games)}개 게임 번호 조회 완료")
+        
+        for game in games:
+            print(f"   게임 {game['game']}: {game['numbers']}")
+        
+        return games
+        
+    except requests.RequestException as e:
+        print(f"❌ 번호 조회 실패: {e}")
+        return []
+    except Exception as e:
+        print(f"❌ 번호 파싱 실패: {e}")
+        return []
+
+
+def buy_manual(driver: webdriver.Chrome, games: list) -> bool:
+    """
+    수동 번호로 로또 구매
+    
+    Args:
+        driver: WebDriver 인스턴스
+        games: 게임 번호 리스트 [{"game": 1, "numbers": [1,7,15,23,35,42]}, ...]
+    
+    Returns:
+        성공 여부
+    """
+    print(f"🎯 수동 번호 {len(games)}게임 입력 중...")
+    
+    try:
+        for game in games:
+            game_num = game["game"]
+            numbers = game["numbers"]
+            
+            print(f"   게임 {game_num}: {numbers} 입력 중...")
+            
+            # 각 번호 버튼 클릭
+            for num in numbers:
+                try:
+                    # 번호 버튼 클릭 (동행복권 번호판 ID 형식)
+                    num_btn = WebDriverWait(driver, 5).until(
+                        EC.element_to_be_clickable((By.CSS_SELECTOR, f"span.ball645_check[value='{num}'], #check645num{num}"))
+                    )
+                    num_btn.click()
+                    time.sleep(0.2)
+                except Exception as e:
+                    print(f"   ⚠️ 번호 {num} 클릭 실패: {e}")
+            
+            # 번호 선택 완료 후 확인 버튼 클릭
+            try:
+                select_btn = driver.find_element(By.ID, "btnSelectNum")
+                select_btn.click()
+                print(f"   ✓ 게임 {game_num} 번호 선택 완료")
+                time.sleep(0.5)
+            except Exception as e:
+                print(f"   ⚠️ 선택 확인 버튼 클릭 실패: {e}")
+        
+        save_screenshot(driver, "07_manual_numbers_selected")
+        print(f"✓ 수동 번호 {len(games)}게임 입력 완료")
+        return True
+        
+    except Exception as e:
+        print(f"❌ 수동 번호 입력 실패: {e}")
+        save_screenshot(driver, "error_manual_input")
+        return False
 
 
 def create_driver(headless: bool = True) -> webdriver.Chrome:
@@ -268,20 +357,23 @@ def save_screenshot(driver: webdriver.Chrome, name: str) -> None:
         print(f"⚠️ 스크린샷 저장 실패: {e}")
 
 
-def run_selenium_buy(user_id: str, password: str, count: int = 1) -> dict:
+def run_selenium_buy(user_id: str, password: str, count: int = 1, sheet_api_url: str = None, mode: str = "auto") -> dict:
     """
     Selenium으로 로또 구매 실행
     
     Args:
         user_id: 사용자 ID
         password: 비밀번호
-        count: 구매 게임 수 (1-5)
+        count: 구매 게임 수 (1-5, 자동 모드에서만 사용)
+        sheet_api_url: 스프레드시트 API URL (수동 모드에서만 사용)
+        mode: "auto" 또는 "manual"
     
     Returns:
         결과 딕셔너리
     """
     result = {"success": False, "message": ""}
     driver = None
+    games = []
     
     try:
         # 환경변수로 headless 모드 제어 (기본: headless)
@@ -289,8 +381,20 @@ def run_selenium_buy(user_id: str, password: str, count: int = 1) -> dict:
         
         print("=" * 50)
         print("🚀 Selenium 로또 구매 시작")
-        print(f"   Headless 모드: {headless}")
+        print(f"   모드: {mode.upper()}")
+        print(f"   Headless: {headless}")
         print("=" * 50)
+        
+        # 수동 모드일 경우 먼저 번호 조회
+        if mode == "manual":
+            if not sheet_api_url:
+                result["message"] = "수동 모드에는 SHEET_API_URL이 필요합니다"
+                return result
+            
+            games = fetch_numbers_from_sheet(sheet_api_url)
+            if not games:
+                result["message"] = "스프레드시트에서 번호를 가져올 수 없습니다"
+                return result
         
         # WebDriver 생성
         driver = create_driver(headless=headless)
@@ -305,20 +409,34 @@ def run_selenium_buy(user_id: str, password: str, count: int = 1) -> dict:
             result["message"] = "로또645 페이지 이동 실패"
             return result
         
-        # 3. 구매 팝업 오픈 (1차 목표)
+        # 3. 구매 영역 접근
         if not open_purchase_popup(driver):
             result["message"] = "구매 영역 접근 실패"
             return result
         
-        # TODO: 추후 실제 구매 로직 구현
-        # buy_auto(driver, count)
+        # 4. 번호 선택 (수동 또는 자동)
+        if mode == "manual" and games:
+            print(f"🎯 수동 모드: {len(games)}게임 번호 입력")
+            if not buy_manual(driver, games):
+                result["message"] = "수동 번호 입력 실패"
+                return result
+        else:
+            print(f"🎲 자동 모드: {count}게임 자동 선택")
+            # TODO: buy_auto(driver, count)
+            pass
+        
+        # TODO: 실제 구매 버튼 클릭 로직
+        # click_purchase_button(driver)
         
         print("=" * 50)
-        print("✅ 1차 목표 달성: 구매 페이지 접근 성공!")
+        print("✅ 구매 페이지 접근 성공!")
+        if mode == "manual":
+            print(f"   수동 번호 {len(games)}게임 준비 완료")
         print("=" * 50)
         
         result["success"] = True
-        result["message"] = "구매 페이지 접근 성공 (1차 목표)"
+        result["message"] = f"{mode.upper()} 모드 구매 준비 완료"
+        result["games"] = games if mode == "manual" else []
         
     except Exception as e:
         print(f"❌ 예외 발생: {e}")
@@ -343,7 +461,11 @@ if __name__ == "__main__":
     
     user_id = os.getenv("USERNAME")
     password = os.getenv("PASSWORD")
-    count = int(os.getenv("COUNT", "1"))
+    count = int(os.getenv("COUNT", "5"))
+    
+    # 구매 모드 및 스프레드시트 API URL
+    purchase_mode = os.getenv("PURCHASE_MODE", "auto").lower()
+    sheet_api_url = os.getenv("SHEET_API_URL", "")
     
     if not user_id or not password:
         print("❌ 환경변수에 USERNAME, PASSWORD를 설정해주세요")
@@ -352,8 +474,16 @@ if __name__ == "__main__":
         print("   PASSWORD=your_password")
         exit(1)
     
-    # 로컬 테스트 시 headless=false로 브라우저 표시
-    os.environ["HEADLESS"] = "false"
+    print(f"구매 모드: {purchase_mode.upper()}")
+    if purchase_mode == "manual" and sheet_api_url:
+        print(f"스프레드시트 API: {sheet_api_url[:50]}...")
     
-    result = run_selenium_buy(user_id, password, count)
+    result = run_selenium_buy(
+        user_id=user_id,
+        password=password,
+        count=count,
+        sheet_api_url=sheet_api_url if purchase_mode == "manual" else None,
+        mode=purchase_mode
+    )
     print(f"\n결과: {result}")
+
