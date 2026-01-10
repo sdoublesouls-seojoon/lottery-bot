@@ -18,20 +18,25 @@ from selenium.common.exceptions import TimeoutException, NoSuchElementException
 from webdriver_manager.chrome import ChromeDriverManager
 
 
-def fetch_numbers_from_sheet(api_url: str) -> list:
+def fetch_numbers_from_sheet(api_url: str, count: int = 5) -> list:
     """
     구글 스프레드시트에서 로또 번호 가져오기
     
     Args:
         api_url: Apps Script Web App URL
+        count: 가져올 게임 수 (1-5)
     
     Returns:
         게임 번호 리스트 [{"game": 1, "numbers": [1,7,15,23,35,42]}, ...]
     """
-    print(f"📊 스프레드시트에서 번호 조회 중...")
+    print(f"📊 스프레드시트에서 {count}게임 번호 조회 중...")
     
     try:
-        response = requests.get(api_url, timeout=10)
+        # count 파라미터 추가
+        separator = "&" if "?" in api_url else "?"
+        url_with_count = f"{api_url}{separator}count={count}"
+        
+        response = requests.get(url_with_count, timeout=10)
         response.raise_for_status()
         data = response.json()
         
@@ -460,7 +465,7 @@ def run_selenium_buy(user_id: str, password: str, count: int = 1, sheet_api_url:
                 result["message"] = "수동 모드에는 SHEET_API_URL이 필요합니다"
                 return result
             
-            games = fetch_numbers_from_sheet(sheet_api_url)
+            games = fetch_numbers_from_sheet(sheet_api_url, count=count)
             if not games:
                 result["message"] = "스프레드시트에서 번호를 가져올 수 없습니다"
                 return result
