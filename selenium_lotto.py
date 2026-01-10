@@ -409,10 +409,16 @@ def open_purchase_popup(driver: webdriver.Chrome) -> bool:
     print("🎫 구매 영역 확인 중...")
     
     try:
-        # 먼저 팝업 div 확인 (판매 시간 외)
-        page_source = driver.page_source
+        # 먼저 popupLayerAlert 팝업이 있으면 닫기
+        try:
+            alert_popup = driver.find_element(By.CSS_SELECTOR, "#popupLayerAlert input.button[value='확인']")
+            driver.execute_script("arguments[0].click();", alert_popup)
+            print("ℹ️ 알림 팝업(popupLayerAlert) 닫음")
+            time.sleep(0.5)
+        except:
+            pass
         
-        # 확인 버튼이 있는 팝업 처리
+        # 다른 팝업도 확인
         try:
             confirm_btn = driver.find_element(By.CSS_SELECTOR, ".btn_common, .popup_btn button, button.confirm")
             confirm_btn.click()
@@ -429,9 +435,9 @@ def open_purchase_popup(driver: webdriver.Chrome) -> bool:
             )
             print("✓ 자동번호발급 버튼 발견!")
             
-            # 클릭 시도 (게임이 없을 수 있음)
+            # JavaScript로 클릭 (headless 안정성)
             try:
-                auto_btn.click()
+                driver.execute_script("arguments[0].click();", auto_btn)
                 print("✓ 자동번호발급 버튼 클릭!")
                 time.sleep(1)
                 save_screenshot(driver, "06_auto_btn_clicked")
