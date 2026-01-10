@@ -178,16 +178,18 @@ def click_purchase_button(driver: webdriver.Chrome) -> bool:
         except:
             pass
         
-        # 최종 확인 버튼이 있을 경우 클릭
+        # 구매 확인 팝업 버튼 클릭 (closepopupLayerConfirm)
         try:
-            confirm_btn = WebDriverWait(driver, 5).until(
-                EC.element_to_be_clickable((By.CSS_SELECTOR, "input[type='button'][value='확인'], button.btn_confirm"))
+            print("   구매 확인 팝업 대기 중...")
+            confirm_btn = WebDriverWait(driver, 10).until(
+                EC.element_to_be_clickable((By.CSS_SELECTOR, "input.button.lrg.confirm[value='확인']"))
             )
             confirm_btn.click()
-            print("✓ 최종 확인 버튼 클릭!")
-            time.sleep(1)
-        except:
-            pass
+            print("✓ 구매 확인 버튼 클릭!")
+            time.sleep(2)
+            save_screenshot(driver, "08b_confirm_clicked")
+        except Exception as e:
+            print(f"   ⚠️ 확인 버튼 없거나 클릭 실패: {e}")
         
         save_screenshot(driver, "09_purchase_completed")
         print("✅ 구매 완료!")
