@@ -113,23 +113,19 @@ class Lotto645:
         )
         
         direct = json.loads(res.text)["ready_ip"]
-        
 
-        # 새 진입점: TotalGame.jsp를 먼저 호출하여 세션 설정
-        print(f"Calling TotalGame.jsp...")
-        print(f"Request headers for TotalGame: {org_headers}")
-        self.http_client.get(
-            url="https://el.dhlottery.co.kr/game/TotalGame.jsp?LottoId=LO40",
-            headers=org_headers
-        )
-        
+        # game645.do 호출 (로그인 시 이미 세션 초기화됨)
         print(f"Calling game645.do...")
-        print(f"Request headers for game645: {org_headers}")
         res = self.http_client.get(
             url="https://ol.dhlottery.co.kr/olotto/game/game645.do",
             headers=org_headers
         )
         html = res.text
+
+        # 세션 만료 확인
+        if "시간 초과" in html or "세션이 해제" in html or "로그인해 주시기 바랍니다" in html:
+            print(f"ERROR: Session expired! Please check login credentials.")
+            raise ValueError("Session expired. Login session was not properly maintained.")
 
         # 디버깅: HTML 파일 저장 (GitHub Actions Artifacts용)
         import os
@@ -142,28 +138,32 @@ class Lotto645:
         except Exception as e:
             print(f"Warning: Could not save HTML: {e}")
 
-        # 디버깅: HTML 응답 확인
-        print(f"game645.do response length: {len(html)}")
-        print(f"game645.do status code: {res.status_code}")
-        print(f"game645.do response headers: {dict(res.headers)}")
-        print(f"Session cookies: {list(self.http_client.session.cookies)}")
-        print(f"game645.do response preview: {html[:1000]}")
-        
-        soup = BS(
-            html, "html5lib"
-        )
-        
+        # 디버깅: 기본 정보
+        print(f"✓ game645.do response: {res.status_code}, {len(html)} bytes")
+
+        soup = BS(html, "html5lib")
+
         draw_date_input = soup.find("input", id="ROUND_DRAW_DATE")
         tlmt_date_input = soup.find("input", id="WAMT_PAY_TLMT_END_DT")
-        
+
         if not draw_date_input or not tlmt_date_input:
-            print(f"ERROR: Required inputs not found!")
-            print(f"ROUND_DRAW_DATE found: {draw_date_input}")
-            print(f"WAMT_PAY_TLMT_END_DT found: {tlmt_date_input}")
+            print(f"ERROR: Required input fields not found in HTML!")
+            print(f"ROUND_DRAW_DATE: {draw_date_input}")
+            print(f"WAMT_PAY_TLMT_END_DT: {tlmt_date_input}")
+
+            # 사용 가능한 input 태그 출력 (디버깅용)
+            print(f"Available input tags (first 10):")
+            all_inputs = soup.find_all("input", limit=10)
+            for inp in all_inputs:
+                print(f"  - id={inp.get('id')}, name={inp.get('name')}, type={inp.get('type')}")
+
             raise ValueError("Required form inputs not found in game645.do page")
         
         draw_date = draw_date_input.get('value')
         tlmt_date = tlmt_date_input.get('value')
+
+        print(f"✓ Found ROUND_DRAW_DATE: {draw_date}")
+        print(f"✓ Found WAMT_PAY_TLMT_END_DT: {tlmt_date}")
 
         return [direct, draw_date, tlmt_date]
 

@@ -62,6 +62,11 @@ class AuthController:
         # Step 5: 로그인 성공 여부 확인 및 세션 저장
         if login_result.get("result") == "success" or login_result.get("loginYn") == "Y":
             self._update_auth_cred(default_auth_cred)
+
+            # Step 6: 다른 서브도메인(ol, el)에서도 세션 초기화
+            self._initialize_subdomain_sessions(default_auth_cred)
+
+            print("✓ Login successful and session initialized")
             return True
         else:
             print(f"Login failed: {login_result.get('message', 'Unknown error')}")
@@ -211,3 +216,35 @@ class AuthController:
         
         # 마이페이지에 접근 가능하면 로그인 상태
         return "로그인" not in res.text or "마이페이지" in res.text
+
+    def _initialize_subdomain_sessions(self, j_session_id: str) -> None:
+        """
+        로그인 후 다른 서브도메인(ol, el)에서도 세션 초기화
+
+        Args:
+            j_session_id: 로그인 세션 ID
+        """
+        headers = self._generate_req_headers(j_session_id)
+
+        try:
+            # el.dhlottery.co.kr 세션 초기화 (TotalGame.jsp)
+            print("Initializing session for el.dhlottery.co.kr...")
+            self.http_client.get(
+                "https://el.dhlottery.co.kr/game/TotalGame.jsp?LottoId=LO40",
+                headers=headers
+            )
+            print("✓ el.dhlottery.co.kr session initialized")
+
+            # ol.dhlottery.co.kr 세션 초기화 (메인 페이지)
+            print("Initializing session for ol.dhlottery.co.kr...")
+            headers_ol = headers.copy()
+            headers_ol["Referer"] = "https://el.dhlottery.co.kr/game/TotalGame.jsp?LottoId=LO40"
+
+            self.http_client.get(
+                "https://ol.dhlottery.co.kr/olotto/game/game645.do",
+                headers=headers_ol
+            )
+            print("✓ ol.dhlottery.co.kr session initialized")
+
+        except Exception as e:
+            print(f"Warning: Failed to initialize subdomain sessions: {e}")
