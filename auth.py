@@ -64,10 +64,14 @@ class AuthController:
 
         # Step 5: 로그인 성공 여부 확인 및 세션 저장
         if login_result.get("result") == "success" or login_result.get("loginYn") == "Y":
-            self._update_auth_cred(default_auth_cred)
+            # 로그인 후 새로운 세션 ID 획득 (중요!)
+            logged_in_session_id = self._get_j_session_id_from_session()
+            print(f"Session ID after login: {logged_in_session_id[:20]}...")
+
+            self._update_auth_cred(logged_in_session_id)
 
             # Step 6: 다른 서브도메인(ol, el)에서도 세션 초기화
-            self._initialize_subdomain_sessions(default_auth_cred)
+            self._initialize_subdomain_sessions(logged_in_session_id)
 
             print("✓ Login successful and session initialized")
             return True
