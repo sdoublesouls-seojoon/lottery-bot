@@ -14,11 +14,26 @@ class Notification:
         self._send_webhook(webhook_url, message, platform)
 
     def send_selenium_buy_message(self, result: dict, webhook_url: str, platform: str = "slack") -> None:
-        """Selenium 구매 결과 알림 전송"""
+        """Selenium 구매 결과 알림 전송 (10게임 지원)"""
         if result.get("success"):
-            message = f"🚀 로또 구매 성공! ({result.get('message')})\n"
+            total_games = len(result.get("games", []))
+            rounds = result.get("rounds", [])
+            
+            message = f"🎰 로또 구매 완료! ({total_games}게임)\n"
+            
+            # 라운드별 결과
+            if rounds:
+                for r in rounds:
+                    status = "✅" if r.get("success") else "❌"
+                    message += f"{status} 라운드 {r['round']}: "
+                    if r.get("games"):
+                        message += f"{len(r['games'])}게임\n"
+                    else:
+                        message += "실패\n"
+            
+            # 구매 번호 표시
             if result.get("games"):
-                message += "🎫 구매 번호:\n```"
+                message += "\n🎫 구매 번호:\n```\n"
                 for game in result["games"]:
                     message += f"게임 {game['game']}: {game['numbers']}\n"
                 message += "```"
